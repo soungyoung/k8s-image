@@ -1,0 +1,37 @@
+name: CI
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  ALIYUN_REGISTRY: registry.cn-hangzhou.aliyuncs.com
+  ALIYUN_NAMESPACE: bzh-k8s
+
+jobs:
+  get-kolla-images:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    # Log into aliyun registry
+    - name: Log into aliyun registry
+      run: docker login -u ${{ secrets.ALIYUN_USERNAME }} -p ${{ secrets.ALIYUN_PASSWORD }}  $ALIYUN_REGISTRY 
+      
+    # pull and push images
+    - name: pull and push images
+      run: |
+        images=$(cat images.txt)
+        count=$(echo "$images" |wc -l)
+        icount=1
+        for image in $images
+        do
+          echo [$icount/$count]: $image
+          docker pull $image || true
+          docker tag $image $ALIYUN_REGISTRY/$ALIYUN_NAMESPACE/$image || true
+          docker push $ALIYUN_REGISTRY/$ALIYUN_NAMESPACE/$image || true
+          ((icount++))
+        done
